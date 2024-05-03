@@ -49,7 +49,7 @@ mouse-1: Previous buffer\nmouse-3: Next buffer")
   (list (propertize
          (format "%s" (all-the-icons-vscode-codicons
                        (if buffer-read-only "lock" "unlock")
-                       :face '((t))))
+                       :face '((nil))))
 	 'help-echo 'mode-line-read-only-help-echo
 	 'local-map (purecopy (make-mode-line-mouse-map
 			       'mouse-1
@@ -59,7 +59,7 @@ mouse-1: Previous buffer\nmouse-3: Next buffer")
          (if buffer-file-name
              (format "%s" (all-the-icons-vscode-codicons
                            "save"
-                           :face (if (buffer-modified-p) '((t :inherit error)) '((t)))))
+                           :face (if (buffer-modified-p) '((nil :inherit error)) '((nil)))))
 	   "%1+")
 	 'help-echo 'mode-line-modified-help-echo
 	 'local-map (purecopy (make-mode-line-mouse-map
@@ -102,8 +102,8 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
                         "battery_")))
          (icon-face (cond ((string= battery-status-symbol "!") 'battery-load-critical)
                           ((string= battery-status-symbol "-") 'battery-load-low)
-                          ((string= battery-status-symbol "+") '((t :inherit success)))
-                          (t '((t))))))
+                          ((string= battery-status-symbol "+") '((nil :inherit success)))
+                          (t '((nil))))))
     (unless (string= battery-status-symbol "!")
       (cond
        ((<= load-percentage 20) (setf icon-name (concat icon-name "20")))
