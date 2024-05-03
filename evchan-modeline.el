@@ -32,7 +32,9 @@
 (require 'battery)
 (require 'all-the-icons)
 
-(defconst evchan-modeline/buffer-identification
+(defsubst evchan-modeline/buffer-identification ()
+  "Generate a string for `mode-line-buffer-identification' with the icon."
+
   (list (propertize
          (format "%s %%12b" (all-the-icons-icon-for-buffer))
          'face 'mode-line-buffer-id
@@ -98,11 +100,11 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
 (dolist (buf (buffer-list))
   (with-current-buffer buf
     (setq-local mode-line-buffer-identification
-                evchan-modeline/buffer-identification)))
+                (evchan-modeline/buffer-identification))))
 (add-hook 'after-change-major-mode-hook
           #'(lambda ()
               (setq-local mode-line-buffer-identification
-                          evchan-modeline/buffer-identification)))
+                          (evchan-modeline/buffer-identification))))
 
 (when (and battery-status-function battery-mode-line-format display-battery-mode)
   (add-to-list 'battery-update-functions
