@@ -43,6 +43,29 @@ mouse-1: Previous buffer\nmouse-3: Next buffer")
          'mouse-face 'mode-line-highlight
          'local-map 'mode-line-buffer-identification-keymap)))
 
+(defsubst evchan-modeline/modified ()
+  "Generate a string for `mode-line-modified' with the icons."
+
+  (list (propertize
+         (format "%s" (all-the-icons-vscode-codicons
+                       (if buffer-read-only "lock" "unlock")
+                       :face '((t))))
+	 'help-echo 'mode-line-read-only-help-echo
+	 'local-map (purecopy (make-mode-line-mouse-map
+			       'mouse-1
+			       #'mode-line-toggle-read-only))
+	 'mouse-face 'mode-line-highlight)
+	(propertize
+         (if buffer-file-name
+             (format "%s" (all-the-icons-vscode-codicons
+                           "save"
+                           :face (if (buffer-modified-p) '((t :inherit error)) '((t)))))
+	   "%1+")
+	 'help-echo 'mode-line-modified-help-echo
+	 'local-map (purecopy (make-mode-line-mouse-map
+			       'mouse-1 #'mode-line-toggle-modified))
+	 'mouse-face 'mode-line-highlight)))
+
 (setq-default mode-line-format
               (list "%e"
                     'mode-line-front-space
@@ -100,11 +123,17 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
 (dolist (buf (buffer-list))
   (with-current-buffer buf
     (setq-local mode-line-buffer-identification
-                (evchan-modeline/buffer-identification))))
+                (evchan-modeline/buffer-identification))
+    (setq-local mode-line-modified
+                (evchan-modeline/modified))))
 (add-hook 'after-change-major-mode-hook
           #'(lambda ()
               (setq-local mode-line-buffer-identification
                           (evchan-modeline/buffer-identification))))
+(add-hook 'post-command-hook
+          #'(lambda ()
+              (setq-local mode-line-modified
+                          (evchan-modeline/modified))))
 
 (when (and battery-status-function battery-mode-line-format display-battery-mode)
   (add-to-list 'battery-update-functions
