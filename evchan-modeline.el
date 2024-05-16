@@ -5,7 +5,7 @@
 ;; Author: Anho Ki
 ;; Maintainer: Anho Ki
 ;; URL: https://github.com/kyano/lightweight-modeline
-;; Version: 0.0.1
+;; Version: 0.0.2
 ;; Package-Requires: ((emacs "29.1") (all-the-icons "6.0.0"))
 
 ;; This file is not part of GNU Emacs.
@@ -30,6 +30,8 @@
 ;;; Code:
 
 (require 'battery)
+(require 'subr-x)
+(require 'vc-hooks)
 (require 'all-the-icons)
 
 (defsubst evchan-modeline/buffer-identification ()
@@ -50,21 +52,21 @@ mouse-1: Previous buffer\nmouse-3: Next buffer")
          (format "%s" (all-the-icons-vscode-codicons
                        (if buffer-read-only "lock" "unlock")
                        :face '((nil))))
-	 'help-echo 'mode-line-read-only-help-echo
-	 'local-map (purecopy (make-mode-line-mouse-map
-			       'mouse-1
-			       #'mode-line-toggle-read-only))
-	 'mouse-face 'mode-line-highlight)
-	(propertize
+         'help-echo 'mode-line-read-only-help-echo
+         'local-map (purecopy (make-mode-line-mouse-map
+                               'mouse-1
+                               #'mode-line-toggle-read-only))
+         'mouse-face 'mode-line-highlight)
+        (propertize
          (if buffer-file-name
              (format "%s" (all-the-icons-vscode-codicons
                            "save"
                            :face (if (buffer-modified-p) '((nil :inherit error)) '((nil)))))
-	   "%1+")
-	 'help-echo 'mode-line-modified-help-echo
-	 'local-map (purecopy (make-mode-line-mouse-map
-			       'mouse-1 #'mode-line-toggle-modified))
-	 'mouse-face 'mode-line-highlight)))
+           "%1+")
+         'help-echo 'mode-line-modified-help-echo
+         'local-map (purecopy (make-mode-line-mouse-map
+                               'mouse-1 #'mode-line-toggle-modified))
+         'mouse-face 'mode-line-highlight)))
 
 (setq-default mode-line-format
               (list "%e"
@@ -139,6 +141,22 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
   (add-to-list 'battery-update-functions
                #'local/battery-mode-line-update)
   (battery-update))
+
+(advice-add 'vc-mode-line
+            :after #'(lambda (_file &optional backend)
+                       (when (stringp vc-mode)
+                         (let* ((vc-mode-trimmed (string-trim-left vc-mode))
+                                (properties (text-properties-at 0 vc-mode-trimmed)))
+                           (setq vc-mode
+                                 (concat
+                                  " "
+                                  (apply #'propertize
+                                         (format "%s %s"
+                                                 (if (string= (symbol-name backend) "Git")
+                                                     (all-the-icons-devopicons "git")
+                                                   (all-the-icons-octicons "workflow"))
+                                                 vc-mode-trimmed)
+                                         properties)))))))
 
 (provide 'evchan-modeline)
 
