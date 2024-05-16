@@ -4,7 +4,7 @@
 
 ;; Author: Anho Ki
 ;; Maintainer: Anho Ki
-;; URL: https://github.com/kyano/lightweight-modeline
+;; URL: https://github.com/kyano/evchan-modeline
 ;; Version: 0.0.2
 ;; Package-Requires: ((emacs "29.1") (all-the-icons "6.0.0"))
 
@@ -88,7 +88,7 @@ mouse-1: Previous buffer\nmouse-3: Next buffer")
                     'mode-line-misc-info
                     'mode-line-end-spaces))
 
-(defun local/battery-mode-line-update (data)
+(defun evchan-modeline/battery-mode-line-update (data)
   "Generate battery status string for mode-line.
 
 DATA is from `battery-update-funtions' so please refer the original doc string."
@@ -122,6 +122,25 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
                                                 :style 'twotone)
                   load-percentage))))
 
+(defun evchan-modeline/vc-mode-line (_file &optional backend)
+  "Add an icon to `vc-mode' string.
+
+When BACKEND is `Git', it adds the special icon."
+
+  (when (stringp vc-mode)
+    (let* ((vc-mode-trimmed (string-trim-left vc-mode))
+           (properties (text-properties-at 0 vc-mode-trimmed)))
+      (setq vc-mode
+            (concat
+             " "
+             (apply #'propertize
+                    (format "%s %s"
+                            (if (string= (symbol-name backend) "Git")
+                                (all-the-icons-devopicons "git")
+                              (all-the-icons-octicons "workflow"))
+                            vc-mode-trimmed)
+                    properties))))))
+
 (dolist (buf (buffer-list))
   (with-current-buffer buf
     (setq-local mode-line-buffer-identification
@@ -139,24 +158,11 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
 
 (when (and battery-status-function battery-mode-line-format display-battery-mode)
   (add-to-list 'battery-update-functions
-               #'local/battery-mode-line-update)
+               #'evchan-modeline/battery-mode-line-update)
   (battery-update))
 
 (advice-add 'vc-mode-line
-            :after #'(lambda (_file &optional backend)
-                       (when (stringp vc-mode)
-                         (let* ((vc-mode-trimmed (string-trim-left vc-mode))
-                                (properties (text-properties-at 0 vc-mode-trimmed)))
-                           (setq vc-mode
-                                 (concat
-                                  " "
-                                  (apply #'propertize
-                                         (format "%s %s"
-                                                 (if (string= (symbol-name backend) "Git")
-                                                     (all-the-icons-devopicons "git")
-                                                   (all-the-icons-octicons "workflow"))
-                                                 vc-mode-trimmed)
-                                         properties)))))))
+            :after #'evchan-modeline/vc-mode-line)
 
 (provide 'evchan-modeline)
 
