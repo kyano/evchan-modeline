@@ -37,13 +37,16 @@
 (defsubst evchan-modeline/buffer-identification ()
   "Generate a string for `mode-line-buffer-identification' with the icon."
 
-  (list (propertize
-         (format "%s %%12b" (all-the-icons-icon-for-buffer))
-         'face 'mode-line-buffer-id
-         'help-echo (purecopy "Buffer name
+  (let ((icon (all-the-icons-icon-for-buffer)))
+    (unless (stringp icon)
+      (setq icon (all-the-icons-octicons "file")))
+    (list (propertize
+           (format "%s %%12b" icon)
+           'face 'mode-line-buffer-id
+           'help-echo (purecopy "Buffer name
 mouse-1: Previous buffer\nmouse-3: Next buffer")
-         'mouse-face 'mode-line-highlight
-         'local-map 'mode-line-buffer-identification-keymap)))
+           'mouse-face 'mode-line-highlight
+           'local-map 'mode-line-buffer-identification-keymap))))
 
 (defsubst evchan-modeline/modified ()
   "Generate a string for `mode-line-modified' with the icons."
