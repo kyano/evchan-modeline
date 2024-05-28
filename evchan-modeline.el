@@ -31,6 +31,7 @@
 
 (require 'battery)
 (require 'subr-x)
+(require 'time)
 (require 'vc-hooks)
 (require 'all-the-icons)
 
@@ -144,6 +145,37 @@ When BACKEND is `Git', it adds the special icon."
                             vc-mode-trimmed)
                     properties))))))
 
+(defun evchan-modeline/display-time-update--load ()
+  "Copied from `time.el'."
+
+  (if (null display-time-load-average)
+      ""
+    (condition-case ()
+        ;; Do not show values less than
+        ;; `display-time-load-average-threshold'.
+        (if (> (* display-time-load-average-threshold 100)
+               (nth display-time-load-average (load-average)))
+            ""
+          ;; The load average number is mysterious, so
+          ;; provide some help.
+          (let ((str (format "%03d"
+                             (nth display-time-load-average
+                                  (load-average)))))
+            (propertize
+             (concat (substring str 0 -2) "." (substring str -2))
+             'local-map (make-mode-line-mouse-map
+                         'mouse-2 'display-time-next-load-average)
+             'mouse-face 'mode-line-highlight
+             'help-echo (concat
+                         "System load average for past "
+                         (if (= 0 display-time-load-average)
+                             "1 minute"
+                           (if (= 1 display-time-load-average)
+                               "5 minutes"
+                             "15 minutes"))
+                         "; mouse-2: next"))))
+      (error ""))))
+
 (dolist (buf (buffer-list))
   (with-current-buffer buf
     (setq-local mode-line-buffer-identification
@@ -166,6 +198,25 @@ When BACKEND is `Git', it adds the special icon."
 
 (advice-add 'vc-mode-line
             :after #'evchan-modeline/vc-mode-line)
+
+(let ((new-forms))
+  (dolist (elem (reverse display-time-string-forms))
+    (if (eq elem 'load)
+        (progn
+          (push #'(evchan-modeline/display-time-update--load) new-forms)
+          (push (format " %s" (all-the-icons-material-icons "memory"
+                                                            :face '((nil))
+                                                            :style 'twotone))
+                new-forms))
+      (push elem new-forms)))
+  (push
+   #'(let* ((hour (string-to-number (format-time-string "%I")))
+            (icon-name (format "time-%d" hour)))
+       (format "%s" (all-the-icons-weather-icons icon-name
+                                                 :face '((nil)))))
+   new-forms)
+  (setq display-time-string-forms new-forms))
+(display-time-update)
 
 (provide 'evchan-modeline)
 
