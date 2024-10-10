@@ -55,7 +55,7 @@ mouse-1: Previous buffer\nmouse-3: Next buffer")
   (list (propertize
          (format "%s" (all-the-icons-vscode-codicons
                        (if buffer-read-only "lock" "unlock")
-                       :face '((nil))))
+                       :face (when buffer-read-only 'error)))
          'help-echo 'mode-line-read-only-help-echo
          'local-map (purecopy (make-mode-line-mouse-map
                                'mouse-1
@@ -65,7 +65,7 @@ mouse-1: Previous buffer\nmouse-3: Next buffer")
          (if buffer-file-name
              (format "%s" (all-the-icons-vscode-codicons
                            "save"
-                           :face (if (buffer-modified-p) '((nil :inherit error)) '((nil)))))
+                           :face (when (buffer-modified-p) 'error)))
            "%1+")
          'help-echo 'mode-line-modified-help-echo
          'local-map (purecopy (make-mode-line-mouse-map
@@ -108,8 +108,8 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
                         "battery_")))
          (icon-face (cond ((string= battery-status-symbol "!") 'battery-load-critical)
                           ((string= battery-status-symbol "-") 'battery-load-low)
-                          ((string= battery-status-symbol "+") '((nil :inherit success)))
-                          (t '((nil))))))
+                          ((string= battery-status-symbol "+") 'success)
+                          (t 'default))))
     (unless (string= battery-status-symbol "!")
       (cond
        ((<= load-percentage 20) (setf icon-name (concat icon-name "20")))
@@ -204,16 +204,13 @@ When BACKEND is `Git', it adds the special icon."
     (if (eq elem 'load)
         (progn
           (push #'(evchan-modeline/display-time-update--load) new-forms)
-          (push (format " %s" (all-the-icons-material-icons "memory"
-                                                            :face '((nil))
-                                                            :style 'twotone))
+          (push (format " %s" (all-the-icons-material-icons "memory" :style 'twotone))
                 new-forms))
       (push elem new-forms)))
   (push
    #'(let* ((hour (string-to-number (format-time-string "%I")))
             (icon-name (format "time-%d" hour)))
-       (format "%s" (all-the-icons-weather-icons icon-name
-                                                 :face '((nil)))))
+       (format "%s" (all-the-icons-weather-icons icon-name)))
    new-forms)
   (setq display-time-string-forms new-forms))
 (display-time-update)
