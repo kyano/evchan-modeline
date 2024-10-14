@@ -109,7 +109,7 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
          (icon-face (cond ((string= battery-status-symbol "!") 'battery-load-critical)
                           ((string= battery-status-symbol "-") 'battery-load-low)
                           ((string= battery-status-symbol "+") 'success)
-                          (t 'default))))
+                          (t nil))))
     (unless (string= battery-status-symbol "!")
       (cond
        ((<= load-percentage 20) (setf icon-name (concat icon-name "20")))
