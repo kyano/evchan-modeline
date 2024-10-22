@@ -261,13 +261,13 @@ When BACKEND is `Git', it adds the special icon."
     (let ((url-user-agent "Evchan Modeline for Emacs github.com/kyano/evchan-modeline")
           (url-request-method "GET"))
       (defvar url-http-end-of-headers)
-      (url-retrieve
-       (format "https://api.met.no/weatherapi/locationforecast/2.0/mini?lat=%s&lon=%s"
-               calendar-latitude
-               calendar-longitude)
-       (lambda (status)
-         (unless (plist-member status 'error)
-           (condition-case ()
+      (condition-case ()
+          (url-retrieve
+           (format "https://api.met.no/weatherapi/locationforecast/2.0/mini?lat=%s&lon=%s"
+                   calendar-latitude
+                   calendar-longitude)
+           (lambda (status)
+             (unless (plist-member status 'error)
                (let* ((weather-data
                        (json-read-from-string
                         (buffer-substring-no-properties (marker-position url-http-end-of-headers)
@@ -288,9 +288,9 @@ When BACKEND is `Git', it adds the special icon."
                  (setq evchan-modeline/weather-icon
                        (all-the-icons-weather-icons weather-icon-name)
                        evchan-modeline/weather-temperature
-                       (format "%s°C" temperature)))
-             (error nil))))
-       nil t)))
+                       (format "%s°C" temperature)))))
+           nil t)
+        (error nil))))
   (run-with-timer 900 nil #'evchan-modeline/update-weather))
 (evchan-modeline/update-weather)
 
