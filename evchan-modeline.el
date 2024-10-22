@@ -30,8 +30,14 @@
 ;;; Code:
 
 (require 'battery)
+(require 'calendar)
+(require 'json)
+(require 'solar)
 (require 'subr-x)
 (require 'time)
+(require 'timer)
+(require 'url)
+(require 'url-http)
 (require 'vc-hooks)
 (require 'all-the-icons)
 
@@ -91,6 +97,68 @@ mouse-1: Previous buffer\nmouse-3: Next buffer")
                     'mode-line-modes
                     'mode-line-misc-info
                     'mode-line-end-spaces))
+
+(defun evchan-modeline/weather-icon-elem (icon-type &optional day night)
+  "Make an element of association list `evchan-modeline/weather-icon-alist'.
+
+When no optional arguments are given, this returns `(ICON-TYPE
+. (ICON-TYPE ICON-TYPE))'.  When ICON-TYPE and DAY are given, this
+returns `(ICON-TYPE . (day-DAY night-alt-DAY))'.  And all arguments are
+given, this returns `(ICON-TYPE . (DAY NIGHT))'.
+
+
+Please note that the icon name prefix is attached only when ICON and
+DAY, 2 arguments are given."
+
+  (if night `(,icon-type . (,day ,night))
+    (if day `(,icon-type . (,(format "day-%s" day) ,(format "night-alt-%s" day)))
+      `(,icon-type . (,icon-type ,icon-type)))))
+
+(defconst evchan-modeline/weather-icon-alist
+  `(,(evchan-modeline/weather-icon-elem "fog")
+    ,(evchan-modeline/weather-icon-elem "clearsky" "day-sunny" "night-clear")
+    ,(evchan-modeline/weather-icon-elem "fair" "cloudy")
+    ,(evchan-modeline/weather-icon-elem "partlycloudy" "cloudy")
+    ,(evchan-modeline/weather-icon-elem "cloudy")
+    ,(evchan-modeline/weather-icon-elem "lightrain" "sprinkle")
+    ,(evchan-modeline/weather-icon-elem "rain" "rain")
+    ,(evchan-modeline/weather-icon-elem "heavyrain" "hail")
+    ,(evchan-modeline/weather-icon-elem "lightrainshowers" "showers")
+    ,(evchan-modeline/weather-icon-elem "rainshowers" "showers")
+    ,(evchan-modeline/weather-icon-elem "heavyrainshowers" "showers" "showers")
+    ,(evchan-modeline/weather-icon-elem "lightrainandthunder" "thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "rainandthunder" "thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "heavyrainandthunder" "thunderstorm" "thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "lightrainshowersandthunder" "storm-showers")
+    ,(evchan-modeline/weather-icon-elem "rainshowersandthunder" "storm-showers")
+    ,(evchan-modeline/weather-icon-elem "heavyrainshowersandthunder" "storm-showers" "storm-showers")
+    ,(evchan-modeline/weather-icon-elem "lightsleet" "sleet")
+    ,(evchan-modeline/weather-icon-elem "sleet" "sleet")
+    ,(evchan-modeline/weather-icon-elem "heavysleet" "sleet" "sleet")
+    ,(evchan-modeline/weather-icon-elem "lightsleetshowers" "rain-mix")
+    ,(evchan-modeline/weather-icon-elem "sleetshowers" "rain-mix")
+    ,(evchan-modeline/weather-icon-elem "heavysleetshowers" "rain-mix" "rain-mix")
+    ,(evchan-modeline/weather-icon-elem "lightsleetandthunder" "sleet-storm")
+    ,(evchan-modeline/weather-icon-elem "sleetandthunder" "sleet-storm")
+    ,(evchan-modeline/weather-icon-elem "heavysleetandthunder" "sleet-storm")
+    ,(evchan-modeline/weather-icon-elem "lightssleetshowersandthunder" "sleet-storm")
+    ,(evchan-modeline/weather-icon-elem "sleetshowersandthunder" "sleet-storm")
+    ,(evchan-modeline/weather-icon-elem "heavysleetshowersandthunder" "sleet-storm")
+    ,(evchan-modeline/weather-icon-elem "lightsnow" "snow")
+    ,(evchan-modeline/weather-icon-elem "snow" "snow" "snow")
+    ,(evchan-modeline/weather-icon-elem "heavysnow" "snowflake-cold" "snowflake-cold")
+    ,(evchan-modeline/weather-icon-elem "lightsnowshowers" "snow")
+    ,(evchan-modeline/weather-icon-elem "snowshowers" "snow" "snow")
+    ,(evchan-modeline/weather-icon-elem "heavysnowshowers" "snowflake-cold" "snowflake-cold")
+    ,(evchan-modeline/weather-icon-elem "lightsnowandthunder" "snow-thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "snowandthunder" "snow-thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "heavysnowandthunder" "snow-thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "lightssnowshowersandthunder"  "snow-thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "snowshowersandthunder" "snow-thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "heavysnowshowersandthunder" "snow-thunderstorm")))
+
+(defvar evchan-modeline/weather-icon nil)
+(defvar evchan-modeline/weather-temperature nil)
 
 (defun evchan-modeline/battery-mode-line-update (data)
   "Generate battery status string for mode-line.
@@ -176,11 +244,71 @@ When BACKEND is `Git', it adds the special icon."
                          "; mouse-2: next"))))
       (error ""))))
 
+(defun evchan-modeline/weather-icon-name (code daytime)
+  "Generate a weather icon name for `all-the-icons', with CODE and DAYTIME."
+
+  (let ((icon-list (cdr (assoc code evchan-modeline/weather-icon-alist))))
+    (if icon-list
+        (if daytime (nth 0 icon-list)
+          (nth 1 icon-list))
+      "celsius")))
+
+(defun evchan-modeline/update-weather ()
+  "Fetch the weather data from `met.no' and save them to the variables."
+
+  (when (and calendar-latitude
+             calendar-longitude)
+    (let ((url-user-agent "Evchan Modeline for Emacs github.com/kyano/evchan-modeline")
+          (url-request-method "GET"))
+      (defvar url-http-end-of-headers)
+      (url-retrieve
+       (format "https://api.met.no/weatherapi/locationforecast/2.0/mini?lat=%s&lon=%s"
+               calendar-latitude
+               calendar-longitude)
+       (lambda (status)
+         (unless (plist-member status 'error)
+           (condition-case ()
+               (let* ((weather-data
+                       (json-read-from-string
+                        (buffer-substring-no-properties (marker-position url-http-end-of-headers)
+                                                        (point-max))))
+                      (current-weather
+                       (assoc 'data (aref (cdr (assoc 'timeseries (assoc 'properties weather-data))) 0)))
+                      (code (cdr (assoc 'symbol_code (assoc 'summary (assoc 'next_1_hours current-weather)))))
+                      (temperature (cdr (assoc 'air_temperature (assoc 'details (assoc 'instant current-weather)))))
+                      (sunrise-sunset (solar-sunrise-sunset (calendar-current-date)))
+                      (sunrise (car (car sunrise-sunset)))
+                      (sunset (car (nth 1 sunrise-sunset)))
+                      (current-time (decode-time))
+                      (hour (nth 2 current-time))
+                      (minute (nth 1 current-time))
+                      (time-of-the-day (+ hour (/ minute (float 60))))
+                      (daytime (and (> time-of-the-day sunrise) (< time-of-the-day sunset)))
+                      (weather-icon-name (evchan-modeline/weather-icon-name code daytime)))
+                 (setq evchan-modeline/weather-icon
+                       (all-the-icons-weather-icons weather-icon-name)
+                       evchan-modeline/weather-temperature
+                       (format "%s°C" temperature)))
+             (error nil))))
+       nil t)))
+  (run-with-timer 900 nil #'evchan-modeline/update-weather))
+(evchan-modeline/update-weather)
+
+(defun evchan-modeline/display-weather ()
+  "Display the weather icon and the current temperature."
+
+  (if (and evchan-modeline/weather-icon
+           evchan-modeline/weather-temperature)
+      (format " %s%s"
+              evchan-modeline/weather-icon
+              evchan-modeline/weather-temperature)
+    ""))
+
 (dolist (buf (buffer-list))
   (with-current-buffer buf
     (setq-local mode-line-buffer-identification
-                (evchan-modeline/buffer-identification))
-    (setq-local mode-line-modified
+                (evchan-modeline/buffer-identification)
+                mode-line-modified
                 (evchan-modeline/modified))))
 (add-hook 'after-change-major-mode-hook
           #'(lambda ()
@@ -214,6 +342,10 @@ When BACKEND is `Git', it adds the special icon."
    new-forms)
   (setq display-time-string-forms new-forms))
 (display-time-update)
+
+(add-to-list 'global-mode-string
+             '(t (:eval (evchan-modeline/display-weather)))
+             t)
 
 (provide 'evchan-modeline)
 
