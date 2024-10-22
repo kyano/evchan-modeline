@@ -34,6 +34,7 @@
 (require 'json)
 (require 'solar)
 (require 'subr-x)
+(require 'tab-bar)
 (require 'time)
 (require 'timer)
 (require 'url)
@@ -188,7 +189,7 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
        ((<= load-percentage 90) (setf icon-name (concat icon-name "90")))
        (t (setf icon-name (concat icon-name "full")))))
     (setq battery-mode-line-string
-          (format "%s%s%%"
+          (format "%s%s%% "
                   (all-the-icons-material-icons icon-name
                                                 :face icon-face
                                                 :style 'twotone)
@@ -292,17 +293,31 @@ When BACKEND is `Git', it adds the special icon."
            nil t)
         (error nil))))
   (run-with-timer 900 nil #'evchan-modeline/update-weather))
-(evchan-modeline/update-weather)
 
 (defun evchan-modeline/display-weather ()
   "Display the weather icon and the current temperature."
 
   (if (and evchan-modeline/weather-icon
            evchan-modeline/weather-temperature)
-      (format " %s%s"
+      (format "%s%s "
               evchan-modeline/weather-icon
               evchan-modeline/weather-temperature)
     ""))
+
+(defun evchan-modeline/tab-bar-tab-name ()
+  "Custom function for `tab-bar-tab-name-function'."
+
+  (let ((buffer (window-buffer (or (minibuffer-selected-window)
+                                   (and (window-minibuffer-p)
+                                        (get-mru-window))))))
+    (with-current-buffer buffer
+      (let ((svg-icon (all-the-icons-icon-for-buffer)))
+        (unless (stringp svg-icon)
+          (setf svg-icon (all-the-icons-octicons "file"
+                                                 :face 'all-the-icons-dsilver)))
+        (let* ((face (get-text-property 0 'face svg-icon))
+               (icon (propertize (format "%s " svg-icon) 'face face)))
+          (concat " " icon (buffer-name buffer)))))))
 
 (dolist (buf (buffer-list))
   (with-current-buffer buf
@@ -319,10 +334,9 @@ When BACKEND is `Git', it adds the special icon."
               (setq-local mode-line-modified
                           (evchan-modeline/modified))))
 
-(when (and battery-status-function battery-mode-line-format display-battery-mode)
-  (add-to-list 'battery-update-functions
-               #'evchan-modeline/battery-mode-line-update)
-  (battery-update))
+(add-to-list 'battery-update-functions
+             #'evchan-modeline/battery-mode-line-update)
+(battery-update)
 
 (advice-add 'vc-mode-line
             :after #'evchan-modeline/vc-mode-line)
@@ -343,9 +357,12 @@ When BACKEND is `Git', it adds the special icon."
   (setq display-time-string-forms new-forms))
 (display-time-update)
 
+(setq tab-bar-tab-name-function
+      #'evchan-modeline/tab-bar-tab-name)
+
 (add-to-list 'global-mode-string
-             '(t (:eval (evchan-modeline/display-weather)))
-             t)
+             '(t (:eval (evchan-modeline/display-weather))))
+(evchan-modeline/update-weather)
 
 (provide 'evchan-modeline)
 
