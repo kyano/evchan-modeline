@@ -337,7 +337,8 @@ When BACKEND is `Git', it adds the special icon."
 
 (add-to-list 'battery-update-functions
              #'evchan-modeline/battery-mode-line-update)
-(battery-update)
+(when (and battery-status-function battery-mode-line-format)
+  (battery-update))
 
 (advice-add 'vc-mode-line
             :after #'evchan-modeline/vc-mode-line)
