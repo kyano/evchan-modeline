@@ -248,7 +248,8 @@ When BACKEND is `Git', it adds the special icon."
 (defun evchan-modeline/weather-icon-name (code daytime)
   "Generate a weather icon name for `all-the-icons', with CODE and DAYTIME."
 
-  (let ((icon-list (cdr (assoc code evchan-modeline/weather-icon-alist))))
+  (let* ((weather-code (car (split-string code "_")))
+         (icon-list (cdr (assoc weather-code evchan-modeline/weather-icon-alist))))
     (if icon-list
         (if daytime (nth 0 icon-list)
           (nth 1 icon-list))
