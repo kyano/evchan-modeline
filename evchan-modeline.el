@@ -265,7 +265,7 @@ When BACKEND is `Git', it adds the special icon."
       (defvar url-http-end-of-headers)
       (condition-case ()
           (url-retrieve
-           (format "https://api.met.no/weatherapi/locationforecast/2.0/mini?lat=%s&lon=%s"
+           (format "https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=%s&lon=%s"
                    calendar-latitude
                    calendar-longitude)
            (lambda (status)
