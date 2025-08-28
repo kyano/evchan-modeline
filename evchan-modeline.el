@@ -255,6 +255,13 @@ When BACKEND is `Git', it adds the special icon."
           (nth 1 icon-list))
       "celsius")))
 
+(defvar evchan-modeline/weather-data)
+
+(defun evchan-modeline/json-weather-data ()
+  "Return the weather data in JSON format."
+
+  (json-encode evchan-modeline/weather-data))
+
 (defun evchan-modeline/update-weather ()
   "Fetch the weather data from `met.no' and save them to the variables."
 
@@ -287,6 +294,7 @@ When BACKEND is `Git', it adds the special icon."
                       (time-of-the-day (+ hour (/ minute (float 60))))
                       (daytime (and (> time-of-the-day sunrise) (< time-of-the-day sunset)))
                       (weather-icon-name (evchan-modeline/weather-icon-name code daytime)))
+                 (setq evchan-modeline/weather-data weather-data)
                  (setq evchan-modeline/weather-icon
                        (all-the-icons-weather-icons weather-icon-name)
                        evchan-modeline/weather-temperature
