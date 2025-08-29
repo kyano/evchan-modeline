@@ -257,10 +257,57 @@ When BACKEND is `Git', it adds the special icon."
 
 (defvar evchan-modeline/weather-data)
 
-(defun evchan-modeline/json-weather-data ()
-  "Return the weather data in JSON format."
+(defun evchan-modeline/json-weather-data (date)
+  "Return the weather data in JSON format.
 
-  (json-encode evchan-modeline/weather-data))
+DATE must be in the format of `%Y-%m-%d'"
+
+  (let* ((properties (assoc 'properties evchan-modeline/weather-data))
+         (units (assoc 'units (assoc 'meta properties)))
+         (timeseries (cdr (assoc 'timeseries properties)))
+         (idx 0)
+         (ret (list)))
+    (while (< idx (length timeseries))
+      (let* ((ts (aref timeseries idx))
+             (timestamp (format-time-string "%Y-%m-%dT%H:%M:%S%:z" (encode-time (parse-time-string (cdr (assoc 'time ts))))))
+             (data (assoc 'data ts))
+             (details (assoc 'details (assoc 'instant data)))
+             (next-1-hours (assoc 'next_1_hours data))
+             (symbol-code (cdr (assoc 'symbol_code (assoc 'summary next-1-hours))))
+             (precipitation-amount (cdr (assoc 'precipitation_amount (assoc 'details next-1-hours)))))
+        (when (string-match (format "^%sT" date) timestamp)
+          (cl-pushnew `(,timestamp . ((symbol_code . ,(if symbol-code symbol-code nil))
+                                      (air_pressure_at_sea_level . ,(format "%.1f%s"
+                                                                            (cdr (assoc 'air_pressure_at_sea_level details))
+                                                                            (cdr (assoc 'air_pressure_at_sea_level units))))
+                                      (air_temperature . ,(format "%.1f%s"
+                                                                  (cdr (assoc 'air_temperature details))
+                                                                  (if (string= "celsius" (cdr (assoc 'air_temperature units)))
+                                                                      "℃"
+                                                                    "℉")))
+                                      (cloud_area_fraction . ,(format "%.1f%s"
+                                                                      (cdr (assoc 'cloud_area_fraction details))
+                                                                      (cdr (assoc 'cloud_area_fraction units))))
+                                      (precipitation_amount . ,(if precipitation-amount
+                                                                   (format "%.1f%s"
+                                                                           precipitation-amount
+                                                                           (cdr (assoc 'precipitation_amount units)))
+                                                                 nil))
+                                      (relative_humidity . ,(format "%.1f%s"
+                                                                    (cdr (assoc 'relative_humidity details))
+                                                                    (cdr (assoc 'relative_humidity units))))
+                                      (wind_from_direction . ,(format "%.1f%s"
+                                                                      (cdr (assoc 'wind_from_direction details))
+                                                                      (if (string= "degrees" (cdr (assoc 'wind_from_direction units)))
+                                                                          "°"
+                                                                        " radian")))
+                                      (wind_speed . ,(format "%.1f%s"
+                                                             (cdr (assoc 'wind_speed details))
+                                                             (cdr (assoc 'wind_speed units))))))
+                      ret
+                      :test #'equal))
+        (setq idx (1+ idx))))
+    (json-encode ret)))
 
 (defun evchan-modeline/update-weather ()
   "Fetch the weather data from `met.no' and save them to the variables."
