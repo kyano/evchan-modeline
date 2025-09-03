@@ -307,7 +307,7 @@ DATE must be in the format of `%Y-%m-%d'"
                       ret
                       :test #'equal))
         (setq idx (1+ idx))))
-    (json-encode ret)))
+    (json-encode (nreverse ret))))
 
 (defun evchan-modeline/update-weather ()
   "Fetch the weather data from `met.no' and save them to the variables."
