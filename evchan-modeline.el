@@ -264,27 +264,27 @@ DATE must be in the format of `%Y-%m-%d'"
   (let* ((properties (gethash "properties" evchan-modeline/weather-data))
          (units (gethash "units" (gethash "meta" properties)))
          (timeseries (gethash "timeseries" properties))
-         (ret (list)))
-    (mapc (lambda (ts)
-            (let* ((timestamp (format-time-string "%Y-%m-%dT%H:%M:%S%:z"
-                                                  (encode-time (parse-time-string (gethash "time" ts)))))
-                   (data (gethash "data" ts))
-                   (details (gethash "details" (gethash "instant" data)))
-                   (next-1-hours (gethash "next_1_hours" data))
-                   (symbol-code
-                    (if next-1-hours
-                        (gethash "symbol_code" (gethash "summary" next-1-hours))
-                      nil))
-                   (precipitation-amount
-                    (if next-1-hours
-                        (gethash "precipitation_amount" (gethash "details" next-1-hours))
-                      nil)))
-              (when (string-match (format "^%sT" date)
-                                  timestamp)
-                (cl-pushnew
+         weather-data)
+    (setq weather-data
+          (mapcar
+           (lambda (ts)
+             (let* ((timestamp (format-time-string "%Y-%m-%dT%H:%M:%S%:z"
+                                                   (encode-time (parse-time-string (gethash "time" ts)))))
+                    (data (gethash "data" ts))
+                    (details (gethash "details" (gethash "instant" data)))
+                    (next-1-hours (gethash "next_1_hours" data))
+                    (symbol-code
+                     (if next-1-hours
+                         (gethash "symbol_code" (gethash "summary" next-1-hours))
+                       nil))
+                    (precipitation-amount
+                     (if next-1-hours
+                         (gethash "precipitation_amount" (gethash "details" next-1-hours))
+                       nil)))
+               (when (string-match (format "^%sT" date)
+                                   timestamp)
                  `(,(intern timestamp)
-                   . (
-                      (symbol_code . ,(if symbol-code
+                   . ((symbol_code . ,(if symbol-code
                                           symbol-code
                                         :null))
                       (air_pressure_at_sea_level . ,(format "%.1f%s"
@@ -313,11 +313,9 @@ DATE must be in the format of `%Y-%m-%d'"
                                                         " radian")))
                       (wind_speed . ,(format "%.1f%s"
                                              (gethash "wind_speed" details)
-                                             (gethash "wind_speed" units)))))
-                 ret
-                 :test #'equal))))
-          timeseries)
-    (json-serialize (nreverse ret))))
+                                             (gethash "wind_speed" units))))))))
+           timeseries))
+    (json-serialize (nreverse (delq nil weather-data)))))
 
 (defun evchan-modeline/update-weather ()
   "Fetch the weather data from `met.no' and save them to the variables."
