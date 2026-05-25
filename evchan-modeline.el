@@ -5,8 +5,8 @@
 ;; Author: Anho Ki
 ;; Maintainer: Anho Ki
 ;; URL: https://github.com/kyano/evchan-modeline
-;; Version: 0.0.2
-;; Package-Requires: ((emacs "29.1") (all-the-icons "6.0.0"))
+;; Version: 0.0.3
+;; Package-Requires: ((emacs "30.1") (all-the-icons "6.0.0"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -315,7 +315,9 @@ DATE must be in the format of `%Y-%m-%d'"
                                              (gethash "wind_speed" details)
                                              (gethash "wind_speed" units))))))))
            timeseries))
-    (json-serialize (nreverse (delq nil weather-data)))))
+    (decode-coding-string
+     (json-serialize (nreverse (delq nil weather-data)))
+     'utf-8)))
 
 (defun evchan-modeline/update-weather ()
   "Fetch the weather data from `met.no' and save them to the variables."
