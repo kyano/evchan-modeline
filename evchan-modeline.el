@@ -31,7 +31,6 @@
 
 (require 'battery)
 (require 'calendar)
-(require 'json)
 (require 'solar)
 (require 'subr-x)
 (require 'tab-bar)
@@ -262,52 +261,63 @@ When BACKEND is `Git', it adds the special icon."
 
 DATE must be in the format of `%Y-%m-%d'"
 
-  (let* ((properties (assoc 'properties evchan-modeline/weather-data))
-         (units (assoc 'units (assoc 'meta properties)))
-         (timeseries (cdr (assoc 'timeseries properties)))
-         (idx 0)
+  (let* ((properties (gethash "properties" evchan-modeline/weather-data))
+         (units (gethash "units" (gethash "meta" properties)))
+         (timeseries (gethash "timeseries" properties))
          (ret (list)))
-    (while (< idx (length timeseries))
-      (let* ((ts (aref timeseries idx))
-             (timestamp (format-time-string "%Y-%m-%dT%H:%M:%S%:z" (encode-time (parse-time-string (cdr (assoc 'time ts))))))
-             (data (assoc 'data ts))
-             (details (assoc 'details (assoc 'instant data)))
-             (next-1-hours (assoc 'next_1_hours data))
-             (symbol-code (cdr (assoc 'symbol_code (assoc 'summary next-1-hours))))
-             (precipitation-amount (cdr (assoc 'precipitation_amount (assoc 'details next-1-hours)))))
-        (when (string-match (format "^%sT" date) timestamp)
-          (cl-pushnew `(,timestamp . ((symbol_code . ,(if symbol-code symbol-code nil))
-                                      (air_pressure_at_sea_level . ,(format "%.1f%s"
-                                                                            (cdr (assoc 'air_pressure_at_sea_level details))
-                                                                            (cdr (assoc 'air_pressure_at_sea_level units))))
-                                      (air_temperature . ,(format "%.1f%s"
-                                                                  (cdr (assoc 'air_temperature details))
-                                                                  (if (string= "celsius" (cdr (assoc 'air_temperature units)))
-                                                                      "℃"
-                                                                    "℉")))
-                                      (cloud_area_fraction . ,(format "%.1f%s"
-                                                                      (cdr (assoc 'cloud_area_fraction details))
-                                                                      (cdr (assoc 'cloud_area_fraction units))))
-                                      (precipitation_amount . ,(if precipitation-amount
-                                                                   (format "%.1f%s"
-                                                                           precipitation-amount
-                                                                           (cdr (assoc 'precipitation_amount units)))
-                                                                 nil))
-                                      (relative_humidity . ,(format "%.1f%s"
-                                                                    (cdr (assoc 'relative_humidity details))
-                                                                    (cdr (assoc 'relative_humidity units))))
-                                      (wind_from_direction . ,(format "%.1f%s"
-                                                                      (cdr (assoc 'wind_from_direction details))
-                                                                      (if (string= "degrees" (cdr (assoc 'wind_from_direction units)))
-                                                                          "°"
-                                                                        " radian")))
-                                      (wind_speed . ,(format "%.1f%s"
-                                                             (cdr (assoc 'wind_speed details))
-                                                             (cdr (assoc 'wind_speed units))))))
-                      ret
-                      :test #'equal))
-        (setq idx (1+ idx))))
-    (json-encode (nreverse ret))))
+    (mapc (lambda (ts)
+            (let* ((timestamp (format-time-string "%Y-%m-%dT%H:%M:%S%:z"
+                                                  (encode-time (parse-time-string (gethash "time" ts)))))
+                   (data (gethash "data" ts))
+                   (details (gethash "details" (gethash "instant" data)))
+                   (next-1-hours (gethash "next_1_hours" data))
+                   (symbol-code
+                    (if next-1-hours
+                        (gethash "symbol_code" (gethash "summary" next-1-hours))
+                      nil))
+                   (precipitation-amount
+                    (if next-1-hours
+                        (gethash "precipitation_amount" (gethash "details" next-1-hours))
+                      nil)))
+              (when (string-match (format "^%sT" date)
+                                  timestamp)
+                (cl-pushnew
+                 `(,(intern timestamp)
+                   . (
+                      (symbol_code . ,(if symbol-code
+                                          symbol-code
+                                        :null))
+                      (air_pressure_at_sea_level . ,(format "%.1f%s"
+                                                            (gethash "air_pressure_at_sea_level" details)
+                                                            (gethash "air_pressure_at_sea_level" units)))
+                      (air_temperature . ,(format "%.1f%s"
+                                                  (gethash "air_temperature" details)
+                                                  (if (string= "celsius" (gethash "air_temperature" units))
+                                                      "℃"
+                                                    "℉")))
+                      (cloud_area_fraction . ,(format "%.1f%s"
+                                                      (gethash "cloud_area_fraction" details)
+                                                      (gethash "cloud_area_fraction" units)))
+                      (precipitation_amount . ,(if precipitation-amount
+                                                   (format "%.1f%s"
+                                                           precipitation-amount
+                                                           (gethash "precipitation_amount" units))
+                                                 :null))
+                      (relative_humidity . ,(format "%.1f%s"
+                                                    (gethash "relative_humidity" details)
+                                                    (gethash "relative_humidity" units)))
+                      (wind_from_direction . ,(format "%.1f%s"
+                                                      (gethash "wind_from_direction" details)
+                                                      (if (string= "degrees" (gethash "wind_from_direction" units))
+                                                          "°"
+                                                        " radian")))
+                      (wind_speed . ,(format "%.1f%s"
+                                             (gethash "wind_speed" details)
+                                             (gethash "wind_speed" units)))))
+                 ret
+                 :test #'equal))))
+          timeseries)
+    (json-serialize (nreverse ret))))
 
 (defun evchan-modeline/update-weather ()
   "Fetch the weather data from `met.no' and save them to the variables."
@@ -325,13 +335,13 @@ DATE must be in the format of `%Y-%m-%d'"
            (lambda (status)
              (unless (plist-member status 'error)
                (let* ((weather-data
-                       (json-read-from-string
+                       (json-parse-string
                         (buffer-substring-no-properties (marker-position url-http-end-of-headers)
                                                         (point-max))))
                       (current-weather
-                       (assoc 'data (aref (cdr (assoc 'timeseries (assoc 'properties weather-data))) 0)))
-                      (code (cdr (assoc 'symbol_code (assoc 'summary (assoc 'next_1_hours current-weather)))))
-                      (temperature (cdr (assoc 'air_temperature (assoc 'details (assoc 'instant current-weather)))))
+                       (gethash "data" (seq-elt (gethash "timeseries" (gethash "properties" weather-data)) 0)))
+                      (code (gethash "symbol_code" (gethash "summary" (gethash "next_1_hours" current-weather))))
+                      (temperature (gethash "air_temperature" (gethash "details" (gethash "instant" current-weather))))
                       (sunrise-sunset (solar-sunrise-sunset (calendar-current-date)))
                       (sunrise (car (car sunrise-sunset)))
                       (sunset (car (nth 1 sunrise-sunset)))
