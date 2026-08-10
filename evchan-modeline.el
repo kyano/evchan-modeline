@@ -5,8 +5,8 @@
 ;; Author: Anho Ki
 ;; Maintainer: Anho Ki
 ;; URL: https://github.com/kyano/evchan-modeline
-;; Version: 0.0.3
-;; Package-Requires: ((emacs "30.1") (all-the-icons "6.0.0"))
+;; Version: 0.0.4
+;; Package-Requires: ((emacs "30.1") (nerd-icons))
 
 ;; This file is not part of GNU Emacs.
 
@@ -39,19 +39,23 @@
 (require 'url)
 (require 'url-http)
 (require 'vc-hooks)
-(require 'all-the-icons)
+(require 'nerd-icons)
 
 (defsubst evchan-modeline/buffer-identification ()
   "Generate a string for `mode-line-buffer-identification' with the icon."
 
-  (let ((icon (all-the-icons-icon-for-buffer)))
+  (let ((icon (nerd-icons-icon-for-buffer)))
     (unless (stringp icon)
-      (setq icon (all-the-icons-octicons "file")))
-    (list (propertize
-           (format "%s %%12b" icon)
+      (setq icon
+            (nerd-icons-octicon "nf-oct-file")))
+    (list icon
+          " "
+          (propertize
+           "%12b"
            'face 'mode-line-buffer-id
-           'help-echo (purecopy "Buffer name
-mouse-1: Previous buffer\nmouse-3: Next buffer")
+           'help-echo
+           "Buffer name
+mouse-1: Previous buffer\nmouse-3: Next buffer"
            'mouse-face 'mode-line-highlight
            'local-map 'mode-line-buffer-identification-keymap))))
 
@@ -59,23 +63,29 @@ mouse-1: Previous buffer\nmouse-3: Next buffer")
   "Generate a string for `mode-line-modified' with the icons."
 
   (list (propertize
-         (format "%s" (all-the-icons-vscode-codicons
-                       (if buffer-read-only "lock" "unlock")
-                       :face (when buffer-read-only 'error)))
+         (nerd-icons-octicon
+          (if buffer-read-only
+              "nf-oct-lock"
+            "nf-oct-unlock")
+          :face
+          (when buffer-read-only
+            'error))
          'help-echo 'mode-line-read-only-help-echo
-         'local-map (purecopy (make-mode-line-mouse-map
-                               'mouse-1
-                               #'mode-line-toggle-read-only))
+         'local-map (make-mode-line-mouse-map
+                     'mouse-1
+                     #'mode-line-toggle-read-only)
          'mouse-face 'mode-line-highlight)
         (propertize
          (if buffer-file-name
-             (format "%s" (all-the-icons-vscode-codicons
-                           "save"
-                           :face (when (buffer-modified-p) 'error)))
+             (nerd-icons-codicon
+              "nf-cod-save"
+              :face
+              (when (buffer-modified-p)
+                'error))
            "%1+")
          'help-echo 'mode-line-modified-help-echo
-         'local-map (purecopy (make-mode-line-mouse-map
-                               'mouse-1 #'mode-line-toggle-modified))
+         'local-map (make-mode-line-mouse-map
+                     'mouse-1 #'mode-line-toggle-modified)
          'mouse-face 'mode-line-highlight)))
 
 (setq-default mode-line-format
@@ -103,59 +113,64 @@ mouse-1: Previous buffer\nmouse-3: Next buffer")
 
 When no optional arguments are given, this returns `(ICON-TYPE
 . (ICON-TYPE ICON-TYPE))'.  When ICON-TYPE and DAY are given, this
-returns `(ICON-TYPE . (day-DAY night-alt-DAY))'.  And all arguments are
+returns `(ICON-TYPE . (day_DAY night_DAY))'.  And all arguments are
 given, this returns `(ICON-TYPE . (DAY NIGHT))'.
 
 
 Please note that the icon name prefix is attached only when ICON and
 DAY, 2 arguments are given."
 
-  (if night `(,icon-type . (,day ,night))
-    (if day `(,icon-type . (,(format "day-%s" day) ,(format "night-alt-%s" day)))
-      `(,icon-type . (,icon-type ,icon-type)))))
+  (if night
+      `(,icon-type . (,day
+                      ,night))
+    (if day
+        `(,icon-type . (,(format "day_%s" day)
+                        ,(format "night_%s" day)))
+      `(,icon-type . (,icon-type
+                      ,icon-type)))))
 
 (defconst evchan-modeline/weather-icon-alist
   `(,(evchan-modeline/weather-icon-elem "fog")
-    ,(evchan-modeline/weather-icon-elem "clearsky" "day-sunny" "night-clear")
-    ,(evchan-modeline/weather-icon-elem "fair" "cloudy")
+    ,(evchan-modeline/weather-icon-elem "clearsky" "day_sunny" "night_clear")
+    ,(evchan-modeline/weather-icon-elem "fair" "day_sunny" "night_clear")
     ,(evchan-modeline/weather-icon-elem "partlycloudy" "cloudy")
     ,(evchan-modeline/weather-icon-elem "cloudy")
     ,(evchan-modeline/weather-icon-elem "lightrain" "sprinkle")
-    ,(evchan-modeline/weather-icon-elem "rain" "rain")
+    ,(evchan-modeline/weather-icon-elem "rain")
     ,(evchan-modeline/weather-icon-elem "heavyrain" "hail")
     ,(evchan-modeline/weather-icon-elem "lightrainshowers" "showers")
     ,(evchan-modeline/weather-icon-elem "rainshowers" "showers")
-    ,(evchan-modeline/weather-icon-elem "heavyrainshowers" "showers" "showers")
+    ,(evchan-modeline/weather-icon-elem "heavyrainshowers" "showers")
     ,(evchan-modeline/weather-icon-elem "lightrainandthunder" "thunderstorm")
     ,(evchan-modeline/weather-icon-elem "rainandthunder" "thunderstorm")
-    ,(evchan-modeline/weather-icon-elem "heavyrainandthunder" "thunderstorm" "thunderstorm")
-    ,(evchan-modeline/weather-icon-elem "lightrainshowersandthunder" "storm-showers")
-    ,(evchan-modeline/weather-icon-elem "rainshowersandthunder" "storm-showers")
-    ,(evchan-modeline/weather-icon-elem "heavyrainshowersandthunder" "storm-showers" "storm-showers")
+    ,(evchan-modeline/weather-icon-elem "heavyrainandthunder" "thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "lightrainshowersandthunder" "storm_showers")
+    ,(evchan-modeline/weather-icon-elem "rainshowersandthunder" "storm_showers")
+    ,(evchan-modeline/weather-icon-elem "heavyrainshowersandthunder" "storm_showers")
     ,(evchan-modeline/weather-icon-elem "lightsleet" "sleet")
-    ,(evchan-modeline/weather-icon-elem "sleet" "sleet")
-    ,(evchan-modeline/weather-icon-elem "heavysleet" "sleet" "sleet")
+    ,(evchan-modeline/weather-icon-elem "sleet")
+    ,(evchan-modeline/weather-icon-elem "heavysleet" "sleet")
     ,(evchan-modeline/weather-icon-elem "lightsleetshowers" "rain-mix")
     ,(evchan-modeline/weather-icon-elem "sleetshowers" "rain-mix")
-    ,(evchan-modeline/weather-icon-elem "heavysleetshowers" "rain-mix" "rain-mix")
-    ,(evchan-modeline/weather-icon-elem "lightsleetandthunder" "sleet-storm")
-    ,(evchan-modeline/weather-icon-elem "sleetandthunder" "sleet-storm")
-    ,(evchan-modeline/weather-icon-elem "heavysleetandthunder" "sleet-storm")
-    ,(evchan-modeline/weather-icon-elem "lightssleetshowersandthunder" "sleet-storm")
-    ,(evchan-modeline/weather-icon-elem "sleetshowersandthunder" "sleet-storm")
-    ,(evchan-modeline/weather-icon-elem "heavysleetshowersandthunder" "sleet-storm")
+    ,(evchan-modeline/weather-icon-elem "heavysleetshowers" "rain-mix")
+    ,(evchan-modeline/weather-icon-elem "lightsleetandthunder" "sleet_storm")
+    ,(evchan-modeline/weather-icon-elem "sleetandthunder" "sleet_storm")
+    ,(evchan-modeline/weather-icon-elem "heavysleetandthunder" "sleet_storm")
+    ,(evchan-modeline/weather-icon-elem "lightssleetshowersandthunder" "sleet_storm")
+    ,(evchan-modeline/weather-icon-elem "sleetshowersandthunder" "sleet_storm")
+    ,(evchan-modeline/weather-icon-elem "heavysleetshowersandthunder" "sleet_storm")
     ,(evchan-modeline/weather-icon-elem "lightsnow" "snow")
-    ,(evchan-modeline/weather-icon-elem "snow" "snow" "snow")
-    ,(evchan-modeline/weather-icon-elem "heavysnow" "snowflake-cold" "snowflake-cold")
+    ,(evchan-modeline/weather-icon-elem "snow")
+    ,(evchan-modeline/weather-icon-elem "heavysnow" "snowflake_cold" "snowflake_cold")
     ,(evchan-modeline/weather-icon-elem "lightsnowshowers" "snow")
-    ,(evchan-modeline/weather-icon-elem "snowshowers" "snow" "snow")
-    ,(evchan-modeline/weather-icon-elem "heavysnowshowers" "snowflake-cold" "snowflake-cold")
-    ,(evchan-modeline/weather-icon-elem "lightsnowandthunder" "snow-thunderstorm")
-    ,(evchan-modeline/weather-icon-elem "snowandthunder" "snow-thunderstorm")
-    ,(evchan-modeline/weather-icon-elem "heavysnowandthunder" "snow-thunderstorm")
-    ,(evchan-modeline/weather-icon-elem "lightssnowshowersandthunder"  "snow-thunderstorm")
-    ,(evchan-modeline/weather-icon-elem "snowshowersandthunder" "snow-thunderstorm")
-    ,(evchan-modeline/weather-icon-elem "heavysnowshowersandthunder" "snow-thunderstorm")))
+    ,(evchan-modeline/weather-icon-elem "snowshowers" "snow")
+    ,(evchan-modeline/weather-icon-elem "heavysnowshowers" "snowflake_cold" "snowflake_cold")
+    ,(evchan-modeline/weather-icon-elem "lightsnowandthunder" "snow_thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "snowandthunder" "snow_thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "heavysnowandthunder" "snow_thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "lightssnowshowersandthunder"  "snow_thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "snowshowersandthunder" "snow_thunderstorm")
+    ,(evchan-modeline/weather-icon-elem "heavysnowshowersandthunder" "snow_thunderstorm")))
 
 (defvar evchan-modeline/weather-icon nil)
 (defvar evchan-modeline/weather-temperature nil)
@@ -169,11 +184,11 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
          (battery-status-symbol (alist-get ?b data))
          (load-percentage (string-to-number (alist-get ?p data)))
          (icon-name (if (string= battery-status-symbol "!")
-                        "battery_alert"
+                        "nf-md-battery_alert"
                       (if (or (string= line-status "AC")
                               (string= battery-status-symbol "+"))
-                          "battery_charging_"
-                        "battery_")))
+                          "nf-md-battery_charging_"
+                        "nf-md-battery_")))
          (icon-face (cond ((string= battery-status-symbol "!") 'battery-load-critical)
                           ((string= battery-status-symbol "-") 'battery-load-low)
                           ((string= battery-status-symbol "+") 'success)
@@ -188,10 +203,9 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
        ((<= load-percentage 90) (setf icon-name (concat icon-name "90")))
        (t (setf icon-name (concat icon-name "full")))))
     (setq battery-mode-line-string
-          (format "%s%s%% "
-                  (all-the-icons-material-icons icon-name
-                                                :face icon-face
-                                                :style 'twotone)
+          (format "[%s%s%%] "
+                  (nerd-icons-mdicon icon-name
+                                     :face icon-face)
                   load-percentage))))
 
 (defun evchan-modeline/vc-mode-line (_file &optional backend)
@@ -200,18 +214,13 @@ DATA is from `battery-update-funtions' so please refer the original doc string."
 When BACKEND is `Git', it adds the special icon."
 
   (when (stringp vc-mode)
-    (let* ((vc-mode-trimmed (string-trim-left vc-mode))
-           (properties (text-properties-at 0 vc-mode-trimmed)))
-      (setq vc-mode
-            (concat
-             " "
-             (apply #'propertize
-                    (format "%s %s"
-                            (if (string= (symbol-name backend) "Git")
-                                (all-the-icons-devopicons "git")
-                              (all-the-icons-octicons "workflow"))
-                            vc-mode-trimmed)
-                    properties))))))
+    (setq vc-mode
+          (concat
+           (if (string= (symbol-name backend)
+                        "Git")
+               (nerd-icons-sucicon "nf-seti-git")
+             (nerd-icons-devicon "nf-dev-git_branch"))
+           vc-mode))))
 
 (defun evchan-modeline/display-time-update--load ()
   "Copied from `time.el'."
@@ -248,11 +257,12 @@ When BACKEND is `Git', it adds the special icon."
   "Generate a weather icon name for `all-the-icons', with CODE and DAYTIME."
 
   (let* ((weather-code (car (split-string code "_")))
-         (icon-list (cdr (assoc weather-code evchan-modeline/weather-icon-alist))))
+         (icon-list (cdr (assoc weather-code
+                                evchan-modeline/weather-icon-alist))))
     (if icon-list
         (if daytime (nth 0 icon-list)
           (nth 1 icon-list))
-      "celsius")))
+      "nf-weather-celsius")))
 
 (defvar evchan-modeline/weather-data)
 
@@ -353,7 +363,9 @@ DATE must be in the format of `%Y-%m-%d'"
                       (weather-icon-name (evchan-modeline/weather-icon-name code daytime)))
                  (setq evchan-modeline/weather-data weather-data)
                  (setq evchan-modeline/weather-icon
-                       (all-the-icons-weather-icons weather-icon-name)
+                       (nerd-icons-wicon (concat
+                                          "nf-weather-"
+                                          weather-icon-name))
                        evchan-modeline/weather-temperature
                        (format "%s°C" temperature)))))
            nil t)
@@ -377,13 +389,15 @@ DATE must be in the format of `%Y-%m-%d'"
                                    (and (window-minibuffer-p)
                                         (get-mru-window))))))
     (with-current-buffer buffer
-      (let ((svg-icon (all-the-icons-icon-for-buffer)))
-        (unless (stringp svg-icon)
-          (setf svg-icon (all-the-icons-octicons "file"
-                                                 :face 'all-the-icons-dsilver)))
-        (let* ((face (get-text-property 0 'face svg-icon))
-               (icon (propertize (format "%s " svg-icon) 'face face)))
-          (concat " " icon (buffer-name buffer)))))))
+      (let ((icon (nerd-icons-icon-for-buffer)))
+        (unless (stringp icon)
+          (setq icon
+                (nerd-icons-octicon "nf-oct-file")))
+        (concat
+         " "
+         icon
+         " "
+         (buffer-name buffer))))))
 
 (dolist (buf (buffer-list))
   (with-current-buffer buf
@@ -402,7 +416,8 @@ DATE must be in the format of `%Y-%m-%d'"
 
 (add-to-list 'battery-update-functions
              #'evchan-modeline/battery-mode-line-update)
-(when (and battery-status-function battery-mode-line-format)
+(when (and battery-status-function
+           battery-mode-line-format)
   (battery-update))
 
 (advice-add 'vc-mode-line
@@ -412,14 +427,18 @@ DATE must be in the format of `%Y-%m-%d'"
   (dolist (elem (reverse display-time-string-forms))
     (if (eq elem 'load)
         (progn
-          (push #'(evchan-modeline/display-time-update--load) new-forms)
-          (push (format " %s" (all-the-icons-material-icons "memory" :style 'twotone))
+          (push #'(evchan-modeline/display-time-update--load)
+                new-forms)
+          (push (format " %s"
+                        (nerd-icons-octicon "nf-oct-cpu"))
                 new-forms))
-      (push elem new-forms)))
+      (push elem
+            new-forms)))
   (push
-   #'(let* ((hour (string-to-number (format-time-string "%I")))
-            (icon-name (format "time-%d" hour)))
-       (format "%s" (all-the-icons-weather-icons icon-name)))
+   #'(let* ((hour (string-to-number (format-time-string "%-I")))
+            (icon-name (format "nf-weather-time_%d"
+                               hour)))
+       (format "%s" (nerd-icons-wicon icon-name)))
    new-forms)
   (setq display-time-string-forms new-forms))
 (display-time-update)
